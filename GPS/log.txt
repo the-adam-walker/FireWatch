@@ -1,5 +1,0 @@
-INFO:root:Receiving GPS data
-INFO:root:{'lat': 3436.45844, 'lon': -11220.90681}
-INFO:root:{'lat': 3436.45804, 'lon': -11220.90665}
-INFO:root:{'lat': 3436.45796, 'lon': -11220.90665}
-INFO:root:{'lat': 3436.45795, 'lon': -11220.90676}

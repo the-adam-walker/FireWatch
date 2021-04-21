@@ -5,13 +5,17 @@ import IMU.data
 import time
 from threading import Thread
 
-NUMBER_OF_THREADS = 10
+NUMBER_OF_THREADS = 4
 NUMBER_OF_OTHER_XBEE = 2
 
+# [0x00, 0x13, 0xA2, 0x00, 0x41, 0x9A, 0xA4, 0x9E],
 ADDRESS_TABLE = [
-		 [0x00, 0x13, 0xA2, 0x00, 0x41, 0x9A, 0xA4, 0x9E],
-		 [0x00, 0x13, 0xA2, 0x00]
+		 [0x00, 0x13, 0xA2, 0x00, 0x41, 0x9A, 0xA4, 0xD0],
+		 [0x00, 0x13, 0xA2, 0x00, 0x41, 0x9A, 0xA5, 0x17]
 		]
+
+DATA_OUT = [[0.0, 0.0], [0.0, 0.0]]
+XBEE = []
 
 thread1setup = False
 thread2setup = False
@@ -20,19 +24,25 @@ thread4setup = False
 
 
 def updateIMU(thread, location, data):
-    global thread1setup
+    global thread1setup, NUMBER_OF_OTHER_XBEE, XBEE
     thread1setup = True
     while True:
-        data.setHeading(IMU.data.calcHeading(IMU.data.getLocalHeading(),
-                                            -112.348769,
-                                            34.607282,
-                                            IMU.data.DMtoDD(location.getLong()),
-                                            IMU.data.DMtoDD(location.getLat())))
+	#-112.348769
+	#34.607282
+	for xbee in range(NUMBER_OF_OTHER_XBEE):
+            data.setHeading(IMU.data.calcHeading(IMU.data.getLocalHeading(),
+                                                XBEE[xbee][1].getLong(),
+                                                XBEE[xbee][1].getLat(),
+                                                IMU.data.DMtoDD(location.getLong()),
+                                                IMU.data.DMtoDD(location.getLat())))
 
-        data.setDistance(IMU.data.calcDist(-112.348769,
-                                            34.607282,
-                                            IMU.data.DMtoDD(location.getLong()),
-                                            IMU.data.DMtoDD(location.getLat())))
+            data.setDistance(IMU.data.calcDist(XBEE[xbee][1].getLong(),
+                                                XBEE[xbee][1].getLat(),
+                                                IMU.data.DMtoDD(location.getLong()),
+                                                IMU.data.DMtoDD(location.getLat())))
+
+	    DATA_OUT[xbee][0] = data.getHeading()
+	    DATA_OUT[xbee][1] = data.getDistance()
 
 
 def updateGPS(thread, location):
@@ -43,36 +53,48 @@ def updateGPS(thread, location):
 
 
 def writeXBee(thread, spidevXBee):
-    global thread3setup
+    global thread3setup, ADDRESS_TABLE, NUMBER_OF_OTHER_XBEE
     thread3setup = True
-    address = [0x00, 0x13, 0xA2, 0x00, 0x41, 0x9A, 0xA4, 0x9E]
     while True:
-	TxPacket = XBee.spi.TxPacket(location.getLat(),
-					location.getLong(),
-					address)
-	TxPacket.createList()
-	spidevXBee.xfer2(TxPacket.getList())
-	sleep(1)
+	for address in range(len(NUMBER_OF_OTHER_XBEE)):
+	    TxPacket = XBee.spi.TxPacket(location.getLat(),
+					    location.getLong(),
+					    ADDRESS_TABLE[address])
+	    TxPacket.createList()
+	    spidevXBee.xfer2(TxPacket.getList())
+	    sleep(1)
 
 
 def readXBee(thread, spidevXBee):
-    global thread4setup
+    global thread4setup, XBEE, NUMBER_OF_OTHER_XBEE
     thread4setup = True
     while True:
-	if (XBee.spi.BytesToHex(spidevXBee.readbytes(1)) == '0x7E'):
-	    lengthVector = XBee.spi.BytesToHex(spidevXBee.readbytes(2))
-	    length = int(lengthVector[1], 16)
+	if (spidevXBee.readbytes(1) == 0x7E):
+	    lengthVector = spidevXBee.readbytes(2)
+	    length = lengthVector[1] + 3
 	    remainder = XBee.spi.BytesToHex(spidevXBee.readbytes(length))
-	    RFData = remainder[14:length]
+	    address = remainder[1:9]
+	    RFData = remainder[12:length]
+	    half = len(RFData) / 2
+	    lat = RFData[:half]
+	    long = RFData[half:]
+	    for xbee in range(NUMBER_OF_OTHER_XBEE):
+		if (XBEE[xbee][0] == address):
+		    XBEE[xbee][1].setLat(lat)
+		    XBEE[xbee][1].setLong(long)
+
 
 def main():
     # Initializations
+    global XBEE, NUMBER_OF_OTHER_XBEE, ADDRESS_TABLE
 
     # location initializations
     location = position.Location() # Initialize location class
 
     # IMU initializations
     data = IMU.data.IMUdata()
+    for xbee in range(NUMBER_OF_OTHER_XBEE):
+	XBEE.append([ADDRESS_TABLE[xbee], position.Location()])
     localHeading = 0.0
 
     # SPI initializations
@@ -127,6 +149,8 @@ def main():
     while True:
         print("Distance: " + str(data.getDistance()))
 	print("Heading: " + str(data.getHeading()))
+	#print("Lat: " + str(location.getLat()))
+	#print("Long: " + str(location.getLong()))
 	time.sleep(1)
 
     return 0

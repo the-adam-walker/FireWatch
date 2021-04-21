@@ -19,6 +19,10 @@ class Location:
 	latlong = [0.0, 0,0]
         if data[0:6] == "$GNRMC":
             sdata = data.split(",")
+	    if (sdata[3] == ""):
+		sdata[3] = "3514.792004"
+	    if (sdata[5] == ""):
+		sdata[5] = "-11645.999654"
 	    sdata[3] = float(sdata[3])
 	    sdata[5] = float(sdata[5])
 	    if sdata[4] == 'S': # n/s

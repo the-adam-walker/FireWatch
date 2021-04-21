@@ -88,25 +88,30 @@ def BytesToHex(Bytes):
     return ''.join(["0x%02X " % x for x in Bytes]).strip()
 
 
-def parseTx():
-    if (XBee.spi.BytesToHex(spidevXBee.readbytes(1)) == '0x7E'):
-            lengthVector = XBee.spi.BytesToHex(spidevXBee.readbytes(2))
-            length = int(lengthVector[1], 16)
-            remainder = XBee.spi.BytesToHex(spidevXBee.readbytes(length))
+def parseTx(packet):
+    for byte in packet:
+        if (byte == 0x7E):
+            lengthVector = [packet[1], packet[2]]
+	    print(lengthVector)
+            length = lengthVector[1] + 3
+	    print(length)
+            remainder = packet[3:length]
+	    print(BytesToHex(remainder))
             RFData = remainder[14:length]
+	    print(BytesToHex(RFData))
 
 def main():
     spi = spidev.SpiDev(0,0)
     __init__(spi)
     packet = TxPacket(123.123, 123.123,
 		      [0x00, 0x13, 0xA2, 0x00, 0x41, 0x9A, 0xA4, 0x9E])
-    packet.createList()
-    packet.readPacket()
+    #packet.createList()
+    #packet.readPacket()
 #    spi.xfer2(packet.getList())
-#    spi.xfer2([0x7E, 0x00, 0x1A, 0x10, 0x01, 0x00, 0x13, 0xA2,
-#	       0x00, 0x41, 0x9A, 0xA4, 0x9E, 0xFF, 0xFE, 0x00,
-#               0x00, 0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x57,
-#               0x6F, 0x72, 0x6C, 0x64, 0x21, 0xE2])
+    parseTx([0x7E, 0x00, 0x1A, 0x10, 0x01, 0x00, 0x13, 0xA2,
+	       0x00, 0x41, 0x9A, 0xA4, 0x9E, 0xFF, 0xFE, 0x00,
+               0x00, 0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x57,
+               0x6F, 0x72, 0x6C, 0x64, 0x21, 0xE2])
 #    while True:
 #       read = BytesToHex(spi.readbytes(1))
 #       print(read)

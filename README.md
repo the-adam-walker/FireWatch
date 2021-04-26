@@ -1,29 +1,21 @@
-# Foobar
+# FireWatch
 
-Foobar is a Python library for dealing with word pluralization.
+FireWatch is a capstone project built to aid wildland firefighters by providing live GPS and heading data to individuals in a team. Reports distance from
+other peers and an arrow pointing to where they are relative to your position.
 
 ## Installation
 
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install foobar.
+Make sure git is installed on your raspberry device and run the following:
 
 ```bash
-pip install foobar
+git clone https://github.com/the-adam-walker/FireWatch.git
 ```
 
 ## Usage
 
-```python
-import foobar
+Make sure all devices are hooked up properly
 
-foobar.pluralize('word') # returns 'words'
-foobar.pluralize('goose') # returns 'geese'
-foobar.singularize('phenomena') # returns 'phenomenon'
+```bash
+python main.py
 ```
 
-## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
-Please make sure to update tests as appropriate.
-
-## License
-[MIT](https://choosealicense.com/licenses/mit/)

@@ -19,8 +19,8 @@ class TxPacket:
 	self.__broadcastRadius = 0x00
 	self.__options = 0x00
 	self.__RFData = []
-	self.__RFData.append(float_to_hex(lat))
-	self.__RFData.append(float_to_hex(long))
+	self.__RFData.append(str(lat).encode("hex"))
+	self.__RFData.append(str(long).encode("hex"))
 	self.__checksum = 0x00
 	self.__formattedList = []
 
@@ -36,10 +36,11 @@ class TxPacket:
 	    self.__formattedList.append(byte)
 	self.__formattedList.append(self.__broadcastRadius)
 	self.__formattedList.append(self.__options)
-	for byte in self.__RFData:
-	    byte = byte[2:]
-	    for index in range(0, len(byte), 2):
-		self.__formattedList.append(int(byte[index:index+2], 16))
+	for i, data in enumerate(self.__RFData):
+	    if (i == 1):
+		self.__formattedList.append(int("$".encode("hex"), 16))
+	    for index in range(0, len(data), 2):
+		self.__formattedList.append(int(data[index:index+2], 16))
 	self.__formattedList[2] = int(hex(len(self.__formattedList) - 2), 16);
 	self.__formattedList.append(calcChecksum(self.__formattedList))
 
@@ -100,24 +101,3 @@ def parseTx(packet):
             RFData = remainder[14:length]
 	    print(BytesToHex(RFData))
 
-def main():
-    spi = spidev.SpiDev(0,0)
-    __init__(spi)
-    packet = TxPacket(123.123, 123.123,
-		      [0x00, 0x13, 0xA2, 0x00, 0x41, 0x9A, 0xA4, 0x9E])
-    #packet.createList()
-    #packet.readPacket()
-#    spi.xfer2(packet.getList())
-    parseTx([0x7E, 0x00, 0x1A, 0x10, 0x01, 0x00, 0x13, 0xA2,
-	       0x00, 0x41, 0x9A, 0xA4, 0x9E, 0xFF, 0xFE, 0x00,
-               0x00, 0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x57,
-               0x6F, 0x72, 0x6C, 0x64, 0x21, 0xE2])
-#    while True:
-#       read = BytesToHex(spi.readbytes(1))
-#       print(read)
-#       time.sleep(0.5)
-    spi.close()
-
-
-if __name__ == '__main__':
-    main()

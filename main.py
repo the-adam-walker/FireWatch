@@ -6,15 +6,15 @@ import time
 from threading import Thread
 
 NUMBER_OF_THREADS = 4
-NUMBER_OF_OTHER_XBEE = 2
-
+NUMBER_OF_OTHER_XBEE = 1
+SPI = 0
 # [0x00, 0x13, 0xA2, 0x00, 0x41, 0x9A, 0xA4, 0x9E],
 ADDRESS_TABLE = [
-		 [0x00, 0x13, 0xA2, 0x00, 0x41, 0x9A, 0xA4, 0xD0],
+		 #[0x00, 0x13, 0xA2, 0x00, 0x41, 0x9A, 0xA4, 0xD0],
 		 [0x00, 0x13, 0xA2, 0x00, 0x41, 0x9A, 0xA5, 0x17]
 		]
 
-DATA_OUT = [[0.0, 0.0], [0.0, 0.0]]
+DATA_OUT = [[0.0, 0.0]] # for one xbee
 XBEE = []
 
 thread1setup = False
@@ -52,41 +52,48 @@ def updateGPS(thread, location):
 	location.updateDictionary()
 
 
-def writeXBee(thread, spidevXBee):
+def writeXBee(thread, spidevXBee, location):
     global thread3setup, ADDRESS_TABLE, NUMBER_OF_OTHER_XBEE
     thread3setup = True
     while True:
-	for address in range(len(NUMBER_OF_OTHER_XBEE)):
+	for address in range(NUMBER_OF_OTHER_XBEE):
 	    TxPacket = XBee.spi.TxPacket(location.getLat(),
 					    location.getLong(),
 					    ADDRESS_TABLE[address])
 	    TxPacket.createList()
 	    spidevXBee.xfer2(TxPacket.getList())
-	    sleep(1)
 
 
 def readXBee(thread, spidevXBee):
     global thread4setup, XBEE, NUMBER_OF_OTHER_XBEE
     thread4setup = True
     while True:
-	if (spidevXBee.readbytes(1) == 0x7E):
+        if (XBee.spi.BytesToHex(spidevXBee.readbytes(1)) == "0x7E"):
 	    lengthVector = spidevXBee.readbytes(2)
-	    length = lengthVector[1] + 3
-	    remainder = XBee.spi.BytesToHex(spidevXBee.readbytes(length))
+	    length = lengthVector[1]
+	    remainder = (spidevXBee.readbytes(length - 1))
 	    address = remainder[1:9]
 	    RFData = remainder[12:length]
-	    half = len(RFData) / 2
-	    lat = RFData[:half]
-	    long = RFData[half:]
+	    half = 0
+	    lat = ""
+	    long = ""
+	    for index, data in enumerate(RFData):
+		if (hex(data)[2:4].decode("hex") == "$"):
+		    half = index
+	    for index, byte in enumerate(RFData):
+		if index < half:
+		    lat = lat + hex(byte)[2:4].decode("hex")
+		if index > half:
+		    long = long + hex(byte)[2:4].decode("hex")
 	    for xbee in range(NUMBER_OF_OTHER_XBEE):
 		if (XBEE[xbee][0] == address):
-		    XBEE[xbee][1].setLat(lat)
-		    XBEE[xbee][1].setLong(long)
+		    XBEE[xbee][1].setLat(IMU.data.DMtoDD(float(lat)))
+		    XBEE[xbee][1].setLong(IMU.data.DMtoDD(float(long)))
 
 
 def main():
     # Initializations
-    global XBEE, NUMBER_OF_OTHER_XBEE, ADDRESS_TABLE
+    global XBEE, NUMBER_OF_OTHER_XBEE, ADDRESS_TABLE, DATA_OUT, SPI
 
     # location initializations
     location = position.Location() # Initialize location class
@@ -98,8 +105,8 @@ def main():
     localHeading = 0.0
 
     # SPI initializations
-    spidevXBee = spidev.SpiDev(0,0)
-    XBee.spi.__init__(spidevXBee)
+    SPI = spidev.SpiDev(0,0)
+    XBee.spi.__init__(SPI)
 
 
     # Thread Initialization
@@ -126,33 +133,34 @@ def main():
     print("Thread 2 Started")
 
     # Thread 3
-    #print("Starting Thread 3...")
-    #t = Thread(target = writeXBee, args=(3))
-    #t.daemon = True
-    #threads.append(t)
-    #t.start()
-    #while (not thread3setup):
-    #	pass
-    #print("Thread 3 Started")
+    print("Starting Thread 3...")
+    t = Thread(target = writeXBee, args=(3, SPI, location))
+    t.daemon = True
+    threads.append(t)
+    t.start()
+    while (not thread3setup):
+    	pass
+    print("Thread 3 Started")
 
     # Thread 4
-    #print("Starting Thread 4...")
-    #t = Thread(targer = readXBee, args=(4))
-    #t.daemon = true
-    #threads.append(t)
-    #t.start()
-    #while (not thread4setup):
-    #    pass
-    #print("Thread 4 Started")
+    print("Starting Thread 4...")
+    t = Thread(target = readXBee, args=(4, SPI))
+    t.daemon = True
+    threads.append(t)
+    t.start()
+    while (not thread4setup):
+        pass
+    print("Thread 4 Started")
 
     # Main Loop
     while True:
-        print("Distance: " + str(data.getDistance()))
-	print("Heading: " + str(data.getHeading()))
+        #print("Distance: " + str(data.getDistance()))
+	#print("Heading: " + str(data.getHeading()))
 	#print("Lat: " + str(location.getLat()))
 	#print("Long: " + str(location.getLong()))
+	#print(DATA_OUT)
 	time.sleep(1)
-
+	pass
     return 0
 
 
